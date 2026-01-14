@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>QuesadaGrande</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    :root {
+      --bg-color: #f4f4f4;
+      --container-bg: #ffffff;
+      --text-color: #000;
+      --text-muted: #555;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --container-bg: #1e1e1e;
+      --text-color: #ffffff;
+      --text-muted: #bbbbbb;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s;
+      color: var(--text-color);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 80px auto;
+      background: var(--container-bg);
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: background-color 0.3s;
+    }
+
+    p {
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: var(--text-muted);
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      background: #007bff;
+      color: white;
+    }
+
+    .player {
+      margin-top: 30px;
+    }
+
+    audio {
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
+</head>
+
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌙 Dark mode</button>
+
+<div class="container">
+  <h1>Welcome 👋</h1>
+  
+  <div class="player">
+    <p><strong>Let's play some music 🎵</strong></p>
+    <audio controls>
+      <source src="muziek.mp3" type="audio/mpeg">
+      Je browser ondersteunt geen audio.
+    </audio>
+  </div>
+
+  <footer>
+    © 2026 – QuesadaGrande
+  </footer>
+</div>
+
+<script>
+  const body = document.body;
+  const button = document.querySelector('.theme-toggle');
+
+  function setTheme(theme) {
+    if (theme === 'dark') {
+      body.classList.add('dark');
+      button.textContent = '☀️ Light mode';
+    } else {
+      body.classList.remove('dark');
+      button.textContent = '🌙 Dark mode';
+    }
+    localStorage.setItem('theme', theme);
+  }
+
+  function toggleTheme() {
+    const isDark = body.classList.contains('dark');
+    setTheme(isDark ? 'light' : 'dark');
+  }
+
+  // Theme bij laden herstellen
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  setTheme(savedTheme);
+</script>
+
+</body>
+</html>
+
