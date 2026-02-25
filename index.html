@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirj's Aftelkalender</title>
+
+<style>
+:root{
+  --dark-bg: radial-gradient(circle at 20% 20%, #1f3c48, #0f2027 60%);
+  --light-bg: linear-gradient(135deg,#f4f7fa,#e6edf3);
+}
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  min-height:100vh;
+  padding:60px 20px 140px;
+  transition:.4s ease;
+}
+
+body.dark{ background:var(--dark-bg); color:white; }
+body.light{ background:var(--light-bg); color:#111; }
+
+.app{ max-width:750px; margin:auto; }
+
+.topbar{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  position:relative;
+  margin-bottom:50px;
+}
+
+.theme-toggle{
+  position:absolute;
+  right:0;
+  font-size:20px;
+  background:rgba(255,255,255,.2);
+  border:none;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  cursor:pointer;
+}
+
+.event-row{
+  display:flex;
+  align-items:stretch;
+  margin-bottom:40px;
+}
+
+.event{
+  flex:1;
+  position:relative;
+  border-radius:28px;
+  overflow:hidden;
+  min-height:230px;
+  box-shadow:0 25px 60px rgba(0,0,0,0.35);
+}
+
+.event-bg{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  padding:34px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.event::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.65),rgba(0,0,0,0.85));
+  z-index:1;
+}
+
+body.light .event::before{
+  background:linear-gradient(to bottom,rgba(0,0,0,0.45),rgba(0,0,0,0.75));
+}
+
+.event-content{
+  position:relative;
+  z-index:2;
+  color:white;
+}
+
+.event-content h2{
+  margin:0;
+  font-size:24px;
+}
+
+.countdown{
+  font-size:42px;
+  font-weight:800;
+  margin-top:14px;
+}
+
+.actions-desktop{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  margin-left:25px;
+}
+
+.actions-desktop button{
+  width:80px;
+  height:80px;
+  border:none;
+  border-radius:22px;
+  color:white;
+  font-size:24px;
+  cursor:pointer;
+}
+
+.remove-img{ background:#555; }
+.edit{ background:#f39c12; }
+.delete{ background:#e74c3c; }
+
+.add-btn{
+  position:fixed;
+  bottom:35px;
+  right:35px;
+  width:75px;
+  height:75px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  font-size:36px;
+  border:none;
+  cursor:pointer;
+  z-index:1000;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  opacity:0;
+  pointer-events:none;
+  transition:.3s;
+  z-index:9999;
+}
+
+.modal.active{ opacity:1; pointer-events:auto; }
+
+.modal-content{
+  width:100%;
+  max-width:430px;
+  border-radius:28px;
+  padding:36px 30px;
+  background:white;
+  display:flex;
+  flex-direction:column;
+  color:#111;
+  box-shadow:0 30px 60px rgba(0,0,0,0.4);
+}
+
+.modal-content h3{
+  margin:0 0 24px 0;
+  font-size:22px;
+  font-weight:700;
+}
+
+.modal input{
+  padding:15px;
+  margin-bottom:18px;
+  border-radius:14px;
+  border:1px solid #ddd;
+}
+
+.modal-buttons{
+  display:flex;
+  gap:12px;
+}
+
+.modal-buttons button{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+}
+
+.save-btn{ background:#667eea; color:white; }
+.cancel-btn{ background:#e0e0e0; }
+</style>
+</head>
+<body class="dark">
+
+<div class="app">
+  <div class="topbar">
+    <h1>✨ Mirj's Aftelkalender</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
+  </div>
+  <div id="events"></div>
+</div>
+
+<button class="add-btn" onclick="openModal(false)">+</button>
+
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <h3 id="modalTitle">Nieuw Event</h3>
+    <input type="text" id="title" placeholder="Titel">
+    <input type="date" id="date">
+    <div class="modal-buttons">
+      <button class="save-btn" onclick="saveEvent()">Opslaan</button>
+      <button class="cancel-btn" onclick="closeModal()">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let events = JSON.parse(localStorage.getItem("events")) || [];
+let editIndex = null;
+
+const gradients=[
+  "linear-gradient(135deg,#667eea,#764ba2)",
+  "linear-gradient(135deg,#ff9966,#ff5e62)",
+  "linear-gradient(135deg,#56ab2f,#a8e063)",
+  "linear-gradient(135deg,#614385,#516395)",
+  "linear-gradient(135deg,#2193b0,#6dd5ed)"
+];
+
+const imagePools={
+  oostenrijk:[
+    "photo-1501785888041-af3ef285b470",
+    "photo-1470770841072-f978cf4d019e",
+    "photo-1464822759023-fed622ff2c3b"
+  ],
+  vakantie:[
+    "photo-1507525428034-b723cf961d3e",
+    "photo-1493558103817-58b2924bce98",
+    "photo-1506929562872-bb421503ef21"
+  ],
+  verjaardag:[
+    "photo-1464349153735-7db50ed83c84",
+    "photo-1513151233558-d860c5398176",
+    "photo-1530103862676-de8c9debad1d"
+  ],
+  default:[
+    "photo-1500530855697-b586d89ba3ee",
+    "photo-1492724441997-5dc865305da7",
+    "photo-1500534623283-312aade485b7"
+  ]
+};
+
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+  document.body.classList.toggle("light");
+  document.querySelector(".theme-toggle").textContent =
+    document.body.classList.contains("dark") ? "☀️" : "🌙";
+}
+
+function getImage(title,index){
+  let lower=title.toLowerCase();
+  let pool=imagePools.default;
+
+  if(lower.includes("oostenrijk")) pool=imagePools.oostenrijk;
+  else if(lower.includes("vakantie")) pool=imagePools.vakantie;
+  else if(lower.includes("verjaardag")) pool=imagePools.verjaardag;
+
+  return pool[index % pool.length];
+}
+
+function render(){
+  const container=document.getElementById("events");
+  container.innerHTML="";
+
+  const today=new Date();
+  today.setHours(0,0,0,0);
+
+  const sortedEvents = events
+    .map((event,i)=>({...event, originalIndex:i}))
+    .sort((a,b)=>{
+      const aDate=new Date(a.date);
+      const bDate=new Date(b.date);
+
+      const aPast = aDate < today;
+      const bPast = bDate < today;
+
+      if(aPast && !bPast) return 1;
+      if(!aPast && bPast) return -1;
+
+      return aDate - bDate;
+    });
+
+  sortedEvents.forEach((event,index)=>{
+    const eventDate=new Date(event.date);
+    eventDate.setHours(0,0,0,0);
+
+    const days=Math.ceil((eventDate-today)/(1000*60*60*24));
+
+    const row=document.createElement("div");
+    row.className="event-row";
+
+    const card=document.createElement("div");
+    card.className="event";
+
+    const bg=document.createElement("div");
+    bg.className="event-bg";
+
+    if(event.useGradient){
+      bg.style.backgroundImage=event.gradient;
+    } else {
+      bg.style.backgroundImage=
+        `url('https://images.unsplash.com/${getImage(event.title,index)}?auto=format&fit=crop&w=1600&q=80')`;
+    }
+
+    let countdown="";
+    if(days>0) countdown=`<div class="countdown">${days} dagen</div>`;
+    else if(days===0) countdown=`<div class="countdown">Vandaag!</div>`;
+
+    bg.innerHTML=`<div class="event-content">
+      <h2>${event.title}</h2>
+      ${countdown}
+    </div>`;
+
+    const actions=document.createElement("div");
+    actions.className="actions-desktop";
+    actions.innerHTML=`
+      <button class="remove-img">🖼️</button>
+      <button class="edit">✏️</button>
+      <button class="delete">🗑️</button>
+    `;
+
+    actions.querySelector(".remove-img").onclick=()=>{
+      const randomGradient =
+        gradients[Math.floor(Math.random()*gradients.length)];
+      events[event.originalIndex].useGradient=true;
+      events[event.originalIndex].gradient=randomGradient;
+      save();
+    };
+
+    actions.querySelector(".edit").onclick=()=>{
+      editIndex=event.originalIndex;
+      document.getElementById("title").value=event.title;
+      document.getElementById("date").value=event.date;
+      openModal(true);
+    };
+
+    actions.querySelector(".delete").onclick=()=>{
+      if(confirm("Weet je zeker dat je dit event wilt verwijderen?")){
+        events.splice(event.originalIndex,1);
+        save();
+      }
+    };
+
+    row.appendChild(card);
+    card.appendChild(bg);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+}
+
+function save(){
+  localStorage.setItem("events",JSON.stringify(events));
+  render();
+}
+
+function openModal(isEdit){
+  const modal=document.getElementById("modal");
+  modal.classList.add("active");
+
+  if(isEdit){
+    document.getElementById("modalTitle").innerText="Event Bewerken";
+  } else {
+    document.getElementById("modalTitle").innerText="Nieuw Event";
+    document.getElementById("title").value="";
+    document.getElementById("date").value="";
+    editIndex=null;
+  }
+}
+
+function closeModal(){
+  document.getElementById("modal").classList.remove("active");
+}
+
+function saveEvent(){
+  const title=document.getElementById("title").value;
+  const date=document.getElementById("date").value;
+  if(!title||!date) return;
+
+  if(editIndex!==null){
+    events[editIndex]={title,date,useGradient:false};
+  } else {
+    events.push({title,date,useGradient:false});
+  }
+
+  save();
+  closeModal();
+}
+
+render();
+</script>
+
+</body>
+</html>
